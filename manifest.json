@@ -2,7 +2,7 @@
   "name": "AC Smart Calculator",
   "short_name": "AC Calc",
   "description": "Godrej AC 1.5 Ton Smart Setting Calculator with custom formula support",
-  "start_url": "/index.html",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#0a1a17",
   "theme_color": "#0d1f1c",
