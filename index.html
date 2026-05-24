@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="theme-color" content="#0d1f1c"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="AC Calc"/>
+<title>AC Smart Calculator</title>
+<link rel="manifest" href="manifest.json"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0a1a17; --bg2: #0f2420; --bg3: #13302a;
+    --teal: #4ecdc4; --teal2: #38b2aa; --teal-dim: rgba(78,205,196,0.15);
+    --text: #e0f0ec; --text2: #7c9a92; --text3: #3d5a55;
+    --border: #1e3530; --border2: #2a4540;
+    --c1: #4ecdc4; --c2: #45b7aa; --c3: #f7c59f; --c4: #f4845f; --c5: #e84855;
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; }
+  body { display: flex; flex-direction: column; }
+
+  /* NAV */
+  .nav { display: flex; background: var(--bg2); border-bottom: 1px solid var(--border); }
+  .nav-btn { flex: 1; padding: 14px 8px 12px; background: none; border: none; color: var(--text2); font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .nav-btn.active { color: var(--teal); border-bottom-color: var(--teal); }
+  .nav-icon { font-size: 18px; }
+
+  /* PAGES */
+  .page { flex: 1; overflow-y: auto; display: none; padding: 16px 16px calc(16px + var(--safe-bottom)); }
+  .page.active { display: block; }
+
+  /* CARDS */
+  .card { background: var(--bg2); border: 1px solid var(--border); border-radius: 18px; padding: 20px; margin-bottom: 14px; }
+  .card-accent { background: linear-gradient(135deg, rgba(78,205,196,0.1), rgba(78,205,196,0.03)); border-color: rgba(78,205,196,0.25); }
+
+  /* RESULT */
+  .result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .result-big { font-family: 'Syne', sans-serif; font-size: 52px; font-weight: 800; line-height: 1; }
+  .result-sub { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text2); margin-top: 4px; }
+  .stats-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .stat-box { background: rgba(255,255,255,0.04); border-radius: 10px; padding: 10px; }
+  .stat-label { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.1em; }
+  .stat-val { font-family: 'DM Mono', monospace; font-size: 15px; font-weight: 500; color: var(--text2); margin-top: 3px; }
+
+  /* MODE BAR */
+  .mode-bar { display: flex; gap: 4px; margin-top: 14px; }
+  .mode-seg { flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.07); transition: background 0.3s; }
+  .mode-labels { display: flex; justify-content: space-between; margin-top: 4px; }
+  .mode-lbl { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--text3); transition: color 0.3s; }
+
+  /* LABEL */
+  .lbl { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text2); margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+  .lbl-val { font-size: 18px; font-family: 'Syne', sans-serif; font-weight: 700; color: var(--teal); }
+
+  /* PILLS */
+  .pills { display: flex; flex-wrap: wrap; gap: 8px; }
+  .pill { padding: 8px 16px; border-radius: 20px; border: 1.5px solid var(--border2); background: transparent; color: var(--text3); font-family: 'DM Mono', monospace; font-size: 12px; cursor: pointer; transition: all 0.2s; -webkit-tap-highlight-color: transparent; }
+  .pill.active { border-color: var(--teal); background: var(--teal-dim); color: var(--teal); }
+
+  /* SLIDER */
+  .slider-wrap { position: relative; padding: 4px 0; }
+  input[type=range] { width: 100%; height: 36px; -webkit-appearance: none; background: transparent; cursor: pointer; }
+  input[type=range]::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: var(--border2); }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%; background: var(--teal); margin-top: -9px; box-shadow: 0 0 10px rgba(78,205,196,0.4); }
+
+  /* SECTION TITLE */
+  .section-title { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 22px; color: var(--text); margin-bottom: 16px; }
+  .section-sub { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--teal); letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 6px; }
+
+  /* FORMULA EDITOR */
+  .formula-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .formula-row:last-child { border-bottom: none; }
+  .formula-name { font-size: 13px; color: var(--text); }
+  .formula-desc { font-size: 11px; color: var(--text2); font-family: 'DM Mono', monospace; margin-top: 2px; }
+  .num-input { background: var(--bg3); border: 1px solid var(--border2); border-radius: 8px; color: var(--teal); font-family: 'DM Mono', monospace; font-size: 16px; width: 72px; padding: 8px; text-align: center; -webkit-appearance: none; }
+  .num-input:focus { outline: none; border-color: var(--teal); }
+
+  /* CUSTOM FORMULA */
+  .formula-box { background: var(--bg3); border: 1px solid var(--border2); border-radius: 12px; padding: 12px; font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text); width: 100%; min-height: 100px; resize: vertical; line-height: 1.7; }
+  .formula-box:focus { outline: none; border-color: var(--teal); }
+  .btn { background: var(--teal); color: #0a1a17; border: none; border-radius: 12px; padding: 12px 20px; font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 500; cursor: pointer; width: 100%; margin-top: 10px; letter-spacing: 0.05em; -webkit-tap-highlight-color: transparent; transition: opacity 0.2s; }
+  .btn:active { opacity: 0.8; }
+  .btn-danger { background: rgba(232,72,85,0.15); color: #e84855; border: 1px solid rgba(232,72,85,0.3); }
+  .btn-sm { padding: 8px 14px; font-size: 11px; width: auto; margin-top: 0; border-radius: 8px; }
+
+  .badge { display: inline-block; padding: 3px 8px; border-radius: 6px; font-family: 'DM Mono', monospace; font-size: 10px; background: var(--teal-dim); color: var(--teal); }
+  .badge-warn { background: rgba(247,197,159,0.15); color: #f7c59f; }
+
+  .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: var(--teal); color: #0a1a17; padding: 10px 20px; border-radius: 20px; font-family: 'DM Mono', monospace; font-size: 12px; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 100; white-space: nowrap; }
+  .toast.show { opacity: 1; }
+
+  .divider { height: 1px; background: var(--border); margin: 8px 0 16px; }
+
+  /* Header */
+  .app-header { padding: 16px 16px 8px; }
+  .app-header h1 { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 20px; color: var(--text); }
+  .app-header p { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--teal); letter-spacing: 0.15em; margin-top: 2px; }
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <p>GODREJ AC · 1.5 TON INVERTER</p>
+  <h1>Smart AC Calculator</h1>
+</div>
+
+<!-- NAV -->
+<nav class="nav">
+  <button class="nav-btn active" onclick="showPage('calc')" id="nav-calc">
+    <span class="nav-icon">❄️</span>Calculator
+  </button>
+  <button class="nav-btn" onclick="showPage('formula')" id="nav-formula">
+    <span class="nav-icon">🧮</span>Formula
+  </button>
+  <button class="nav-btn" onclick="showPage('history')" id="nav-history">
+    <span class="nav-icon">📊</span>History
+  </button>
+</nav>
+
+<!-- CALCULATOR PAGE -->
+<div class="page active" id="page-calc">
+
+  <!-- Result -->
+  <div class="card card-accent" id="result-card">
+    <div class="result-grid">
+      <div>
+        <div class="lbl" style="margin-bottom:4px">Set Temp</div>
+        <div class="result-big" id="res-temp" style="color:#e0f0ec">--°</div>
+        <div class="result-sub" id="res-feel">feels like --°C</div>
+      </div>
+      <div>
+        <div class="lbl" style="margin-bottom:4px">Mode</div>
+        <div class="result-big" id="res-mode">--</div>
+        <div class="result-sub" id="res-mode-detail">-- % · -- W</div>
+      </div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-box"><div class="stat-label">Units/hr</div><div class="stat-val" id="res-units">--</div></div>
+      <div class="stat-box"><div class="stat-label">Cost/hr</div><div class="stat-val" id="res-cost">₹--</div></div>
+      <div class="stat-box"><div class="stat-label">Heat Load</div><div class="stat-val" id="res-load">--W</div></div>
+    </div>
+    <div class="mode-bar" id="mode-bar"></div>
+    <div class="mode-labels" id="mode-labels"></div>
+  </div>
+
+  <!-- Inputs -->
+  <div class="card">
+    <div class="lbl">Outdoor Temp <span class="lbl-val" id="lbl-out">38°C</span></div>
+    <div class="slider-wrap">
+      <input type="range" id="sl-outdoor" min="25" max="48" value="38" oninput="update()"/>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="lbl">People in Room <span class="lbl-val" id="lbl-people">3</span></div>
+    <div class="slider-wrap">
+      <input type="range" id="sl-people" min="1" max="8" value="3" oninput="update()"/>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="lbl" style="margin-bottom:12px">Time of Day</div>
+    <div class="pills">
+      <button class="pill" id="pill-day" onclick="setTime('day')">☀️ Day</button>
+      <button class="pill active" id="pill-night" onclick="setTime('night')">🌙 Night</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="lbl" style="margin-bottom:12px">Ceiling Fan</div>
+    <div class="pills">
+      <button class="pill active" id="pill-fan-on" onclick="setFan(true)">✅ On</button>
+      <button class="pill" id="pill-fan-off" onclick="setFan(false)">Off</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="lbl" style="margin-bottom:12px">Blanket</div>
+    <div class="pills">
+      <button class="pill active" id="pill-bl-none" onclick="setBlanket('none')">None</button>
+      <button class="pill" id="pill-bl-thin" onclick="setBlanket('thin')">Thin</button>
+      <button class="pill" id="pill-bl-heavy" onclick="setBlanket('heavy')">Heavy</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="lbl" style="margin-bottom:12px">Room Pre-cooled?</div>
+    <div class="pills">
+      <button class="pill active" id="pill-pre-yes" onclick="setPreCooled(true)">✅ Yes</button>
+      <button class="pill" id="pill-pre-no" onclick="setPreCooled(false)">No — Starting Fresh</button>
+    </div>
+  </div>
+
+  <div class="card" style="background:rgba(78,205,196,0.04)">
+    <div class="lbl" style="margin-bottom:8px">Active Formula</div>
+    <div id="active-formula-name" style="font-size:14px;color:var(--teal);font-family:'DM Mono',monospace"></div>
+    <div id="active-formula-desc" style="font-size:11px;color:var(--text2);margin-top:4px;font-family:'DM Mono',monospace;line-height:1.6"></div>
+  </div>
+</div>
+
+<!-- FORMULA PAGE -->
+<div class="page" id="page-formula">
+
+  <div class="section-sub">Adjustment Values</div>
+  <div class="section-title">Formula Editor</div>
+
+  <div class="card">
+    <div style="font-size:12px;color:var(--text2);font-family:'DM Mono',monospace;margin-bottom:16px;line-height:1.7">
+      Base temp = <span style="color:var(--teal)">26°C</span> (BEE standard)<br/>
+      Outdoor temp → determines <span style="color:var(--teal)">Mode</span> (C1–C5)<br/>
+      Adjustments below → determine <span style="color:var(--teal)">Set Temp</span>
+    </div>
+
+    <div id="formula-rows"></div>
+  </div>
+
+  <!-- Custom formula section -->
+  <div class="section-sub" style="margin-top:8px">Custom Formula</div>
+  <div class="card">
+    <div style="font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.6">
+      Write your own formula in JavaScript. Available variables:<br/>
+      <span style="color:var(--teal);font-family:'DM Mono',monospace">outdoorTemp, people, ceilingFan (bool), blanket ('none'/'thin'/'heavy'), preCooled (bool), timeOfDay ('day'/'night'), F (formula adjustments)</span><br/><br/>
+      Must return: <span style="color:var(--teal);font-family:'DM Mono',monospace">{ tSet, loadMultiplier }</span>
+    </div>
+    <textarea class="formula-box" id="custom-formula-input" placeholder="// Example custom formula:
+// return {
+//   tSet: 26 + (ceilingFan ? F.fanAdj : 0),
+//   loadMultiplier: 1.0
+// }"></textarea>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="btn btn-sm" onclick="testCustomFormula()" style="background:var(--teal-dim);color:var(--teal);border:1px solid rgba(78,205,196,0.3)">Test Formula</button>
+      <button class="btn btn-sm" onclick="saveCustomFormula()">Save & Use</button>
+      <button class="btn btn-sm btn-danger" onclick="clearCustomFormula()">Clear</button>
+    </div>
+    <div id="formula-test-result" style="margin-top:10px;font-family:'DM Mono',monospace;font-size:11px;display:none"></div>
+  </div>
+
+  <!-- Saved formulas -->
+  <div class="section-sub" style="margin-top:8px">Saved Formulas</div>
+  <div id="saved-formulas-list"></div>
+
+  <button class="btn" onclick="resetToDefaults()">↺ Reset to Defaults</button>
+</div>
+
+<!-- HISTORY PAGE -->
+<div class="page" id="page-history">
+
+  <div class="section-sub">Session Log</div>
+  <div class="section-title">History</div>
+
+  <div id="history-list"></div>
+  <button class="btn btn-danger" onclick="clearHistory()" style="margin-top:8px">Clear History</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────────────────────────
+const C_MODES = [
+  { name:'C1', pct:40, watts:594  },
+  { name:'C2', pct:60, watts:891  },
+  { name:'C3', pct:80, watts:1188 },
+  { name:'C4', pct:100,watts:1485 },
+  { name:'C5', pct:110,watts:1634 },
+];
+const MODE_COLORS = { C1:'#4ecdc4', C2:'#45b7aa', C3:'#f7c59f', C4:'#f4845f', C5:'#e84855' };
+
+const DEFAULT_FORMULA = {
+  name: 'Default (BEE Standard)',
+  baseTempC: 26,
+  fanAdj: 1.5,
+  blanketThin: -1,
+  blanketHeavy: -2,
+  peopleAdj: -0.3,
+  nightAdj: 1.0,
+  preCooledAdj: 0.5,
+  infiltrationFactor: 35,
+  preCooledLoadMult: 0.6,
+  peopleHeatW: 100,
+};
+
+const FORMULA_FIELDS = [
+  { key:'baseTempC',       label:'Base Temp (°C)',          desc:'BEE comfort standard starting point', min:22, max:28, step:0.5 },
+  { key:'fanAdj',          label:'Ceiling Fan Adj (°C)',     desc:'Added to set temp when fan is on',   min:0,  max:3,  step:0.5 },
+  { key:'blanketThin',     label:'Thin Blanket Adj (°C)',    desc:'Subtracted — blanket warms body',    min:-3, max:0,  step:0.5 },
+  { key:'blanketHeavy',    label:'Heavy Blanket Adj (°C)',   desc:'Subtracted — more warmth',           min:-4, max:0,  step:0.5 },
+  { key:'peopleAdj',       label:'Per Extra Person (°C)',    desc:'Each person beyond 2 (negative)',    min:-1, max:0,  step:0.1 },
+  { key:'nightAdj',        label:'Night Time Adj (°C)',      desc:'Added for night use',                min:0,  max:2,  step:0.5 },
+  { key:'preCooledAdj',    label:'Pre-cooled Adj (°C)',      desc:'Room already cool — raise slightly', min:0,  max:2,  step:0.5 },
+  { key:'infiltrationFactor',label:'Infiltration (W/°C)',   desc:'Heat entering per °C temp diff',     min:10, max:80, step:5   },
+  { key:'preCooledLoadMult', label:'Pre-cooled Load Mult',  desc:'Load multiplier when pre-cooled',    min:0.3,max:1,  step:0.1 },
+  { key:'peopleHeatW',     label:'Heat per Person (W)',      desc:'Body heat generated per person',     min:50, max:150,step:10  },
+];
+
+let state = {
+  outdoorTemp: 38, people: 3,
+  ceilingFan: true, blanket: 'none', preCooled: true, timeOfDay: 'night'
+};
+let formula = loadFormula();
+let history = loadHistory();
+let customFormulas = loadCustomFormulas();
+let activeCustomFormula = null;
+
+// ─── STORAGE ─────────────────────────────────────────────────────────────────
+function loadFormula()        { try { return JSON.parse(localStorage.getItem('acFormula')) || {...DEFAULT_FORMULA}; } catch(e) { return {...DEFAULT_FORMULA}; } }
+function saveFormula()        { localStorage.setItem('acFormula', JSON.stringify(formula)); }
+function loadHistory()        { try { return JSON.parse(localStorage.getItem('acHistory')) || []; } catch(e) { return []; } }
+function saveHistoryData()    { localStorage.setItem('acHistory', JSON.stringify(history)); }
+function loadCustomFormulas() { try { return JSON.parse(localStorage.getItem('acCustomFormulas')) || []; } catch(e) { return []; } }
+function saveCustomFormulas() { localStorage.setItem('acCustomFormulas', JSON.stringify(customFormulas)); }
+
+// ─── CALCULATION ──────────────────────────────────────────────────────────────
+function calculate(s, F, customFn) {
+  let tSet = F.baseTempC;
+  let loadMult = 1;
+
+  if (customFn) {
+    try {
+      const result = customFn(s.outdoorTemp, s.people, s.ceilingFan, s.blanket, s.preCooled, s.timeOfDay, F);
+      tSet = result.tSet ?? tSet;
+      loadMult = result.loadMultiplier ?? 1;
+    } catch(e) { /* fallback to default */ }
+  } else {
+    if (s.ceilingFan)         tSet += F.fanAdj;
+    if (s.blanket === 'thin') tSet += F.blanketThin;
+    if (s.blanket === 'heavy') tSet += F.blanketHeavy;
+    if (s.people > 2)         tSet += (s.people - 2) * F.peopleAdj;
+    if (s.timeOfDay === 'night') tSet += F.nightAdj;
+    if (s.preCooled)          tSet += F.preCooledAdj;
+    if (s.preCooled)          loadMult = F.preCooledLoadMult;
+  }
+
+  tSet = Math.min(30, Math.max(24, Math.round(tSet * 2) / 2));
+
+  const peopleHeat   = s.people * F.peopleHeatW;
+  const tempDiff     = Math.max(0, s.outdoorTemp - tSet);
+  const infiltration = tempDiff * F.infiltrationFactor;
+  const totalLoad    = Math.round((peopleHeat + infiltration) * loadMult);
+
+  let mode = C_MODES[3];
+  for (let m of C_MODES) { if (m.watts * 0.9 >= totalLoad) { mode = m; break; } }
+
+  const fanFeel     = s.ceilingFan ? -2 : 0;
+  const blanketFeel = s.blanket === 'thin' ? 1.5 : s.blanket === 'heavy' ? 2.5 : 0;
+  const feelTemp    = Math.round((tSet + fanFeel + blanketFeel) * 10) / 10;
+
+  return { tSet, mode, feelTemp, totalLoad, unitsPerHr:(mode.watts/1000).toFixed(2), costPerHr:(mode.watts/1000*8).toFixed(1) };
+}
+
+// ─── UPDATE UI ───────────────────────────────────────────────────────────────
+function update() {
+  const outdoorTemp = +document.getElementById('sl-outdoor').value;
+  const people      = +document.getElementById('sl-people').value;
+  document.getElementById('lbl-out').textContent    = outdoorTemp + '°C';
+  document.getElementById('lbl-people').textContent = people;
+  state.outdoorTemp = outdoorTemp;
+  state.people      = people;
+
+  const customFn = activeCustomFormula ? makeCustomFn(activeCustomFormula.code) : null;
+  const r = calculate(state, formula, customFn);
+  const mc = MODE_COLORS[r.mode.name];
+
+  document.getElementById('res-temp').textContent        = r.tSet + '°';
+  document.getElementById('res-temp').style.color        = '#e0f0ec';
+  document.getElementById('res-feel').textContent        = `feels like ${r.feelTemp}°C`;
+  document.getElementById('res-mode').textContent        = r.mode.name;
+  document.getElementById('res-mode').style.color        = mc;
+  document.getElementById('res-mode-detail').textContent = `${r.mode.pct}% · ${r.mode.watts}W`;
+  document.getElementById('res-units').textContent       = r.unitsPerHr;
+  document.getElementById('res-cost').textContent        = '₹' + r.costPerHr;
+  document.getElementById('res-load').textContent        = r.totalLoad + 'W';
+  document.getElementById('result-card').style.borderColor = mc + '55';
+
+  // Mode bar
+  const bar    = document.getElementById('mode-bar');
+  const labels = document.getElementById('mode-labels');
+  bar.innerHTML = labels.innerHTML = '';
+  C_MODES.forEach(m => {
+    const seg = document.createElement('div');
+    seg.className = 'mode-seg';
+    seg.style.background = m.name === r.mode.name ? mc : 'rgba(255,255,255,0.07)';
+    bar.appendChild(seg);
+    const lbl = document.createElement('div');
+    lbl.className = 'mode-lbl';
+    lbl.textContent = m.name;
+    lbl.style.color = m.name === r.mode.name ? mc : 'var(--text3)';
+    labels.appendChild(lbl);
+  });
+
+  // Active formula display
+  const fname = activeCustomFormula ? activeCustomFormula.name : formula.name || 'Default (BEE Standard)';
+  document.getElementById('active-formula-name').textContent = fname;
+  document.getElementById('active-formula-desc').textContent =
+    `Base ${formula.baseTempC}°C + fan(${formula.fanAdj}) + night(${formula.nightAdj}) · ${r.totalLoad}W load`;
+
+  // Save to history (debounced)
+  clearTimeout(update._histTimer);
+  update._histTimer = setTimeout(() => addHistory(r, state), 1500);
+}
+
+// ─── HISTORY ─────────────────────────────────────────────────────────────────
+function addHistory(r, s) {
+  const entry = {
+    time: new Date().toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'}),
+    date: new Date().toLocaleDateString('en-IN', {day:'numeric', month:'short'}),
+    outdoor: s.outdoorTemp, people: s.people,
+    fan: s.ceilingFan, blanket: s.blanket, night: s.timeOfDay === 'night',
+    tSet: r.tSet, mode: r.mode.name, feel: r.feelTemp, units: r.unitsPerHr
+  };
+  history.unshift(entry);
+  if (history.length > 50) history.pop();
+  saveHistoryData();
+  renderHistory();
+}
+
+function renderHistory() {
+  const el = document.getElementById('history-list');
+  if (!history.length) { el.innerHTML = '<div class="card" style="color:var(--text2);font-family:\'DM Mono\',monospace;font-size:12px;text-align:center">No history yet</div>'; return; }
+  el.innerHTML = history.map(h => `
+    <div class="card" style="padding:14px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <span style="font-family:'Syne',sans-serif;font-weight:700;font-size:22px;color:${MODE_COLORS[h.mode]}">${h.mode}</span>
+          <span style="font-family:'DM Mono',monospace;font-size:18px;color:var(--text);margin-left:10px">${h.tSet}°C</span>
+        </div>
+        <div style="text-align:right;font-family:'DM Mono',monospace;font-size:10px;color:var(--text2)">${h.time}<br/>${h.date}</div>
+      </div>
+      <div style="margin-top:8px;font-family:'DM Mono',monospace;font-size:11px;color:var(--text2)">
+        🌡️ ${h.outdoor}°C outside · 👥 ${h.people} people · ${h.fan?'🌀 fan':'no fan'} · ${h.blanket !== 'none' ? '🛏️ '+h.blanket+' blanket · ':'' }${h.night?'🌙 night':'☀️ day'}
+      </div>
+      <div style="margin-top:4px;font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)">feels ${h.feel}°C · ${h.units} units/hr</div>
+    </div>
+  `).join('');
+}
+
+function clearHistory() { history = []; saveHistoryData(); renderHistory(); showToast('History cleared'); }
+
+// ─── FORMULA EDITOR ───────────────────────────────────────────────────────────
+function renderFormulaEditor() {
+  const container = document.getElementById('formula-rows');
+  container.innerHTML = FORMULA_FIELDS.map(f => `
+    <div class="formula-row">
+      <div>
+        <div class="formula-name">${f.label}</div>
+        <div class="formula-desc">${f.desc}</div>
+      </div>
+      <input type="number" class="num-input" id="fe-${f.key}"
+        value="${formula[f.key]}" step="${f.step}" min="${f.min}" max="${f.max}"
+        onchange="updateFormulaField('${f.key}', this.value)"/>
+    </div>
+  `).join('');
+  renderSavedFormulas();
+}
+
+function updateFormulaField(key, val) {
+  formula[key] = parseFloat(val);
+  saveFormula();
+  update();
+  showToast('Formula updated ✓');
+}
+
+function resetToDefaults() {
+  formula = {...DEFAULT_FORMULA};
+  saveFormula();
+  activeCustomFormula = null;
+  renderFormulaEditor();
+  update();
+  showToast('Reset to defaults');
+}
+
+// ─── CUSTOM FORMULA ───────────────────────────────────────────────────────────
+function makeCustomFn(code) {
+  try {
+    return new Function('outdoorTemp','people','ceilingFan','blanket','preCooled','timeOfDay','F', code);
+  } catch(e) { return null; }
+}
+
+function testCustomFormula() {
+  const code = document.getElementById('custom-formula-input').value.trim();
+  const res  = document.getElementById('formula-test-result');
+  if (!code) { res.style.display='none'; return; }
+  try {
+    const fn = makeCustomFn(code);
+    const out = fn(state.outdoorTemp, state.people, state.ceilingFan, state.blanket, state.preCooled, state.timeOfDay, formula);
+    res.style.display = 'block';
+    res.style.color   = '#4ecdc4';
+    res.textContent   = `✓ Result: tSet=${out.tSet}°C, loadMultiplier=${out.loadMultiplier ?? 1}`;
+  } catch(e) {
+    res.style.display = 'block';
+    res.style.color   = '#e84855';
+    res.textContent   = '✗ Error: ' + e.message;
+  }
+}
+
+function saveCustomFormula() {
+  const code = document.getElementById('custom-formula-input').value.trim();
+  if (!code) { showToast('Write a formula first'); return; }
+  try {
+    makeCustomFn(code); // validate
+    const name = 'Custom Formula ' + (customFormulas.length + 1);
+    const entry = { id: Date.now(), name, code, saved: new Date().toLocaleDateString('en-IN') };
+    customFormulas.push(entry);
+    saveCustomFormulas();
+    activeCustomFormula = entry;
+    renderSavedFormulas();
+    update();
+    showToast('Formula saved & active ✓');
+  } catch(e) { showToast('Error in formula: ' + e.message); }
+}
+
+function clearCustomFormula() {
+  document.getElementById('custom-formula-input').value = '';
+  document.getElementById('formula-test-result').style.display = 'none';
+}
+
+function activateFormula(id) {
+  if (id === 'default') { activeCustomFormula = null; }
+  else { activeCustomFormula = customFormulas.find(f => f.id === id); }
+  renderSavedFormulas();
+  update();
+  showToast('Formula activated ✓');
+}
+
+function deleteCustomFormula(id) {
+  customFormulas = customFormulas.filter(f => f.id !== id);
+  if (activeCustomFormula?.id === id) activeCustomFormula = null;
+  saveCustomFormulas();
+  renderSavedFormulas();
+  update();
+  showToast('Formula deleted');
+}
+
+function renderSavedFormulas() {
+  const el = document.getElementById('saved-formulas-list');
+  const all = [{ id:'default', name:'Default (BEE Standard)', saved:'Built-in' }, ...customFormulas];
+  el.innerHTML = all.map(f => {
+    const isActive = f.id === 'default' ? !activeCustomFormula : activeCustomFormula?.id === f.id;
+    return `<div class="card" style="padding:14px;${isActive ? 'border-color:rgba(78,205,196,0.4)' : ''}">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-size:13px;color:${isActive ? 'var(--teal)' : 'var(--text)'}">${f.name} ${isActive ? '<span class="badge">active</span>' : ''}</div>
+          <div style="font-size:10px;color:var(--text2);font-family:\'DM Mono\',monospace;margin-top:2px">${f.saved}</div>
+        </div>
+        <div style="display:flex;gap:6px">
+          ${!isActive ? `<button class="btn btn-sm" onclick="activateFormula('${f.id}')" style="background:var(--teal-dim);color:var(--teal);border:1px solid rgba(78,205,196,0.3)">Use</button>` : ''}
+          ${f.id !== 'default' ? `<button class="btn btn-sm btn-danger" onclick="deleteCustomFormula(${f.id})">Del</button>` : ''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ─── CONTROLS ─────────────────────────────────────────────────────────────────
+function setTime(t) {
+  state.timeOfDay = t;
+  document.getElementById('pill-day').classList.toggle('active', t === 'day');
+  document.getElementById('pill-night').classList.toggle('active', t === 'night');
+  update();
+}
+function setFan(v) {
+  state.ceilingFan = v;
+  document.getElementById('pill-fan-on').classList.toggle('active', v);
+  document.getElementById('pill-fan-off').classList.toggle('active', !v);
+  update();
+}
+function setBlanket(v) {
+  state.blanket = v;
+  ['none','thin','heavy'].forEach(b => document.getElementById('pill-bl-'+b).classList.toggle('active', b === v));
+  update();
+}
+function setPreCooled(v) {
+  state.preCooled = v;
+  document.getElementById('pill-pre-yes').classList.toggle('active', v);
+  document.getElementById('pill-pre-no').classList.toggle('active', !v);
+  update();
+}
+
+// ─── NAV ──────────────────────────────────────────────────────────────────────
+function showPage(p) {
+  document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById('page-' + p).classList.add('active');
+  document.getElementById('nav-' + p).classList.add('active');
+  if (p === 'history') renderHistory();
+}
+
+// ─── TOAST ────────────────────────────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+renderFormulaEditor();
+update();
+renderHistory();
+
+// Register service worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+</script>
+</body>
+</html>
